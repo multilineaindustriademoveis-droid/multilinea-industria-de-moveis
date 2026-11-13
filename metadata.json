@@ -1,0 +1,6 @@
+{
+  "name": "Multilinea MES — Controle de Produção Moveleira",
+  "description": "Sistema de apontamento e controle de entregas de produção industrial para setores de Seccionadoras, Coladeiras de Borda, Furadeiras e Linha de Pintura UV.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

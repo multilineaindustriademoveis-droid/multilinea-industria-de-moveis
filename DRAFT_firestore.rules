@@ -1,0 +1,598 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Hardened Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'multilineaindustriademoveis@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidSector(sector) {
+      return sector is string && sector.size() <= 20 && (
+        sector == 'SECCIONADORA' ||
+        sector == 'COLADEIRA' ||
+        sector == 'FURADEIRA' ||
+        sector == 'LINHA_UV'
+      );
+    }
+
+    function isValidSectorOrAll(sector) {
+      return sector is string && sector.size() <= 20 && (
+        sector == 'ALL' ||
+        sector == 'SECCIONADORA' ||
+        sector == 'COLADEIRA' ||
+        sector == 'FURADEIRA' ||
+        sector == 'LINHA_UV'
+      );
+    }
+
+    function isValidInefficiencyCategory(cat) {
+      return cat is string && cat.size() <= 25 && (
+        cat == 'SETUP' ||
+        cat == 'MANUTENCAO' ||
+        cat == 'MATERIAL' ||
+        cat == 'OPERACIONAL' ||
+        cat == 'QUALIDADE'
+      );
+    }
+
+    function isValidMachineStatus(status) {
+      return status is string && status.size() <= 20 && (
+        status == 'OPERANDO' ||
+        status == 'SETUP' ||
+        status == 'MANUTENCAO' ||
+        status == 'PARADA'
+      );
+    }
+
+    function isValidShift(shift) {
+      return shift is string && shift.size() <= 20 && (
+        shift == 'TURNO_1' ||
+        shift == 'TURNO_2' ||
+        shift == 'TURNO_3'
+      );
+    }
+
+    // 3. Entity Validation Blueprints
+    function isValidMachine(data) {
+      return data.keys().hasAll([
+        'name',
+        'sector',
+        'username',
+        'accessPin',
+        'status',
+        'currentProduct',
+        'currentPart',
+        'currentPartCode',
+        'currentBatch',
+        'ownerId',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'name',
+        'sector',
+        'username',
+        'accessPin',
+        'status',
+        'currentProduct',
+        'currentPaCode',
+        'currentPart',
+        'currentPartCode',
+        'currentBatch',
+        'ownerId',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+      isValidSector(data.sector) &&
+      data.username is string && data.username.size() >= 2 && data.username.size() <= 50 && data.username.matches('^[a-zA-Z0-9_\\-]+$') &&
+      data.accessPin is string && data.accessPin.size() >= 3 && data.accessPin.size() <= 50 &&
+      isValidMachineStatus(data.status) &&
+      data.currentProduct is string && data.currentProduct.size() <= 120 &&
+      (!('currentPaCode' in data) || (data.currentPaCode is string && data.currentPaCode.size() <= 60)) &&
+      data.currentPart is string && data.currentPart.size() <= 120 &&
+      data.currentPartCode is string && data.currentPartCode.size() <= 60 &&
+      data.currentBatch is string && data.currentBatch.size() <= 60 &&
+      isValidId(data.ownerId) &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidCatalogPart(data) {
+      return data.keys().hasAll([
+        'productName',
+        'paCode',
+        'partName',
+        'partCode',
+        'dimensions',
+        'squareMeters',
+        'ownerId',
+        'createdAt'
+      ]) &&
+      data.keys().hasOnly([
+        'productName',
+        'paCode',
+        'partName',
+        'partCode',
+        'dimensions',
+        'squareMeters',
+        'uvSquareMeters',
+        'uvFaces',
+        'linearMeters',
+        'edgeConfig',
+        'ownerId',
+        'createdAt'
+      ]) &&
+      data.productName is string && data.productName.size() >= 1 && data.productName.size() <= 120 &&
+      data.paCode is string && data.paCode.size() >= 1 && data.paCode.size() <= 60 &&
+      data.partName is string && data.partName.size() >= 1 && data.partName.size() <= 120 &&
+      data.partCode is string && data.partCode.size() >= 1 && data.partCode.size() <= 60 &&
+      data.dimensions is string && data.dimensions.size() >= 1 && data.dimensions.size() <= 80 &&
+      data.squareMeters is number && data.squareMeters > 0 && data.squareMeters <= 10000 &&
+      (!('uvSquareMeters' in data) || (data.uvSquareMeters is number && data.uvSquareMeters >= 0 && data.uvSquareMeters <= 20000)) &&
+      (!('uvFaces' in data) || (data.uvFaces is number && (data.uvFaces == 0 || data.uvFaces == 1 || data.uvFaces == 2))) &&
+      (!('linearMeters' in data) || (data.linearMeters is number && data.linearMeters >= 0 && data.linearMeters <= 10000)) &&
+      (!('edgeConfig' in data) || (data.edgeConfig is string && data.edgeConfig.size() <= 40)) &&
+      isValidId(data.ownerId) &&
+      data.createdAt is timestamp;
+    }
+
+    function isValidFactorySettings(data) {
+      return data.keys().hasAll([
+        'targetCorteM2',
+        'targetCortePcs',
+        'targetColadeiraMl',
+        'targetColadeiraPcs',
+        'targetFuradeiraPcs',
+        'targetPinturaUvM2',
+        'targetPinturaUvPcs',
+        'ownerId',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'targetCorteM2',
+        'targetCorteMonthlyM2',
+        'targetCortePcs',
+        'targetColadeiraMl',
+        'targetColadeiraMonthlyMl',
+        'targetColadeiraPcs',
+        'targetFuradeiraPcs',
+        'targetFuradeiraMonthlyPcs',
+        'targetPinturaUvM2',
+        'targetPinturaUvMonthlyM2',
+        'targetPinturaUvPcs',
+        'dailyTargetM2Global',
+        'dailyTargetM2Seccionadora',
+        'dailyTargetM2Coladeira',
+        'dailyTargetM2Furadeira',
+        'dailyTargetM2LinhaUv',
+        'ownerId',
+        'updatedAt'
+      ]) &&
+      data.targetCorteM2 is number && data.targetCorteM2 >= 0 && data.targetCorteM2 <= 10000000 &&
+      (!('targetCorteMonthlyM2' in data) || (data.targetCorteMonthlyM2 is number && data.targetCorteMonthlyM2 >= 0 && data.targetCorteMonthlyM2 <= 100000000)) &&
+      data.targetCortePcs is number && data.targetCortePcs >= 0 && data.targetCortePcs <= 10000000 &&
+      data.targetColadeiraMl is number && data.targetColadeiraMl >= 0 && data.targetColadeiraMl <= 10000000 &&
+      (!('targetColadeiraMonthlyMl' in data) || (data.targetColadeiraMonthlyMl is number && data.targetColadeiraMonthlyMl >= 0 && data.targetColadeiraMonthlyMl <= 100000000)) &&
+      data.targetColadeiraPcs is number && data.targetColadeiraPcs >= 0 && data.targetColadeiraPcs <= 10000000 &&
+      data.targetFuradeiraPcs is number && data.targetFuradeiraPcs >= 0 && data.targetFuradeiraPcs <= 10000000 &&
+      (!('targetFuradeiraMonthlyPcs' in data) || (data.targetFuradeiraMonthlyPcs is number && data.targetFuradeiraMonthlyPcs >= 0 && data.targetFuradeiraMonthlyPcs <= 100000000)) &&
+      data.targetPinturaUvM2 is number && data.targetPinturaUvM2 >= 0 && data.targetPinturaUvM2 <= 10000000 &&
+      (!('targetPinturaUvMonthlyM2' in data) || (data.targetPinturaUvMonthlyM2 is number && data.targetPinturaUvMonthlyM2 >= 0 && data.targetPinturaUvMonthlyM2 <= 100000000)) &&
+      data.targetPinturaUvPcs is number && data.targetPinturaUvPcs >= 0 && data.targetPinturaUvPcs <= 10000000 &&
+      isValidId(data.ownerId) &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidProductionLog(data) {
+      return data.keys().hasAll([
+        'machineId',
+        'machineName',
+        'machineUsername',
+        'sector',
+        'productName',
+        'partName',
+        'partCode',
+        'batchNumber',
+        'quantityGood',
+        'quantityScrap',
+        'operatorName',
+        'shift',
+        'notes',
+        'ownerId',
+        'createdAt'
+      ]) &&
+      data.keys().hasOnly([
+        'machineId',
+        'machineName',
+        'machineUsername',
+        'sector',
+        'productName',
+        'paCode',
+        'partName',
+        'partCode',
+        'batchNumber',
+        'quantityGood',
+        'quantityScrap',
+        'measuredAmount',
+        'operatorName',
+        'shift',
+        'notes',
+        'ownerId',
+        'createdAt'
+      ]) &&
+      isValidId(data.machineId) &&
+      data.machineName is string && data.machineName.size() >= 1 && data.machineName.size() <= 100 &&
+      data.machineUsername is string && data.machineUsername.size() >= 2 && data.machineUsername.size() <= 50 &&
+      isValidSector(data.sector) &&
+      data.productName is string && data.productName.size() >= 1 && data.productName.size() <= 120 &&
+      (!('paCode' in data) || (data.paCode is string && data.paCode.size() <= 60)) &&
+      data.partName is string && data.partName.size() >= 1 && data.partName.size() <= 120 &&
+      data.partCode is string && data.partCode.size() >= 1 && data.partCode.size() <= 60 &&
+      data.batchNumber is string && data.batchNumber.size() >= 1 && data.batchNumber.size() <= 60 &&
+      data.quantityGood is number && data.quantityGood >= 0 && data.quantityGood <= 100000 &&
+      data.quantityScrap is number && data.quantityScrap >= 0 && data.quantityScrap <= 100000 &&
+      (data.quantityGood > 0 || data.quantityScrap > 0) &&
+      (!('measuredAmount' in data) || (data.measuredAmount is number && data.measuredAmount >= 0 && data.measuredAmount <= 10000000)) &&
+      data.operatorName is string && data.operatorName.size() >= 1 && data.operatorName.size() <= 80 &&
+      isValidShift(data.shift) &&
+      data.notes is string && data.notes.size() <= 250 &&
+      isValidId(data.ownerId) &&
+      data.createdAt is timestamp;
+    }
+
+    function isValidInefficiencyReason(data) {
+      return data.keys().hasAll([
+        'code',
+        'name',
+        'category',
+        'sector',
+        'ownerId',
+        'createdAt'
+      ]) &&
+      data.keys().hasOnly([
+        'code',
+        'name',
+        'category',
+        'sector',
+        'ownerId',
+        'createdAt'
+      ]) &&
+      data.code is string && data.code.size() >= 1 && data.code.size() <= 30 &&
+      data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+      isValidInefficiencyCategory(data.category) &&
+      isValidSectorOrAll(data.sector) &&
+      isValidId(data.ownerId) &&
+      data.createdAt is timestamp;
+    }
+
+    function isValidDowntimeLog(data) {
+      return data.keys().hasAll([
+        'machineId',
+        'machineName',
+        'machineUsername',
+        'sector',
+        'reasonCode',
+        'reasonName',
+        'category',
+        'durationMinutes',
+        'operatorName',
+        'shift',
+        'notes',
+        'ownerId',
+        'createdAt'
+      ]) &&
+      data.keys().hasOnly([
+        'machineId',
+        'machineName',
+        'machineUsername',
+        'sector',
+        'reasonCode',
+        'reasonName',
+        'category',
+        'durationMinutes',
+        'operatorName',
+        'shift',
+        'notes',
+        'ownerId',
+        'createdAt'
+      ]) &&
+      isValidId(data.machineId) &&
+      data.machineName is string && data.machineName.size() >= 1 && data.machineName.size() <= 100 &&
+      data.machineUsername is string && data.machineUsername.size() >= 2 && data.machineUsername.size() <= 50 &&
+      isValidSector(data.sector) &&
+      data.reasonCode is string && data.reasonCode.size() >= 1 && data.reasonCode.size() <= 30 &&
+      data.reasonName is string && data.reasonName.size() >= 1 && data.reasonName.size() <= 120 &&
+      isValidInefficiencyCategory(data.category) &&
+      data.durationMinutes is number && data.durationMinutes > 0 && data.durationMinutes <= 1440 &&
+      data.operatorName is string && data.operatorName.size() >= 1 && data.operatorName.size() <= 80 &&
+      isValidShift(data.shift) &&
+      data.notes is string && data.notes.size() <= 250 &&
+      isValidId(data.ownerId) &&
+      data.createdAt is timestamp;
+    }
+
+    // 4. Collection Rules
+    match /machines/{machineId} {
+      allow get: if isSignedIn() && isValidId(machineId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+        isValidId(machineId) &&
+        isValidMachine(incoming()) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn() &&
+        isValidId(machineId) &&
+        isValidMachine(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (existing().ownerId == request.auth.uid || isAdmin()) &&
+        (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'status',
+            'currentProduct',
+            'currentPaCode',
+            'currentPart',
+            'currentPartCode',
+            'currentBatch',
+            'updatedAt'
+          ]) ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name',
+            'sector',
+            'username',
+            'accessPin',
+            'status',
+            'currentProduct',
+            'currentPaCode',
+            'currentPart',
+            'currentPartCode',
+            'currentBatch',
+            'updatedAt'
+          ])
+        );
+
+      allow delete: if isSignedIn() && isValidId(machineId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /catalog_parts/{partId} {
+      allow get: if isSignedIn() && isValidId(partId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+        isValidId(partId) &&
+        isValidCatalogPart(incoming()) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time;
+
+      allow update: if isSignedIn() &&
+        isValidId(partId) &&
+        isValidCatalogPart(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        (existing().ownerId == request.auth.uid || isAdmin()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'productName',
+          'paCode',
+          'partName',
+          'partCode',
+          'dimensions',
+          'squareMeters',
+          'uvSquareMeters',
+          'uvFaces',
+          'linearMeters',
+          'edgeConfig',
+          'defaultBatch',
+          'targetQuantity',
+          'expectedDailyOutput'
+        ]);
+
+      allow delete: if isSignedIn() && isValidId(partId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /factory_settings/{settingId} {
+      allow get: if isSignedIn() && isValidId(settingId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+        isValidId(settingId) &&
+        isValidFactorySettings(incoming()) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn() &&
+        isValidId(settingId) &&
+        isValidFactorySettings(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().updatedAt == request.time &&
+        (existing().ownerId == request.auth.uid || isAdmin()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'targetCorteM2',
+          'targetCorteMonthlyM2',
+          'targetCortePcs',
+          'targetColadeiraMl',
+          'targetColadeiraMonthlyMl',
+          'targetColadeiraPcs',
+          'targetFuradeiraPcs',
+          'targetFuradeiraMonthlyPcs',
+          'targetPinturaUvM2',
+          'targetPinturaUvMonthlyM2',
+          'targetPinturaUvPcs',
+          'dailyTargetM2Global',
+          'dailyTargetM2Seccionadora',
+          'dailyTargetM2Coladeira',
+          'dailyTargetM2Furadeira',
+          'dailyTargetM2LinhaUv',
+          'updatedAt'
+        ]);
+
+      allow delete: if isSignedIn() && isValidId(settingId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /production_logs/{logId} {
+      allow get: if isSignedIn() && isValidId(logId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+        isValidId(logId) &&
+        isValidProductionLog(incoming()) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/machines/$(incoming().machineId));
+
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(logId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /inefficiency_reasons/{reasonId} {
+      allow get: if isSignedIn() && isValidId(reasonId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+        isValidId(reasonId) &&
+        isValidInefficiencyReason(incoming()) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time;
+
+      allow update: if isSignedIn() &&
+        isValidId(reasonId) &&
+        isValidInefficiencyReason(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        (existing().ownerId == request.auth.uid || isAdmin()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'code',
+          'name',
+          'category',
+          'sector'
+        ]);
+
+      allow delete: if isSignedIn() && isValidId(reasonId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /downtime_logs/{downtimeId} {
+      allow get: if isSignedIn() && isValidId(downtimeId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+        isValidId(downtimeId) &&
+        isValidDowntimeLog(incoming()) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/machines/$(incoming().machineId));
+
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(downtimeId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    function isValidProductionOrder(data) {
+      return data.keys().hasAll([
+        'orderCode',
+        'productCode',
+        'batchNumber',
+        'productLine',
+        'scheduleColor',
+        'productDescription',
+        'finishColor',
+        'qtyV01',
+        'qtyV02',
+        'qtyV03',
+        'totalVolumes',
+        'dateCorte',
+        'dateColadeira',
+        'dateFuradeira',
+        'datePintura',
+        'ownerId',
+        'createdAt'
+      ]) &&
+      data.keys().hasOnly([
+        'orderCode',
+        'productCode',
+        'batchNumber',
+        'productLine',
+        'scheduleColor',
+        'productDescription',
+        'finishColor',
+        'qtyV01',
+        'qtyV02',
+        'qtyV03',
+        'totalVolumes',
+        'dateCorte',
+        'dateColadeira',
+        'dateFuradeira',
+        'datePintura',
+        'isHighlighted',
+        'isEncab',
+        'ownerId',
+        'createdAt'
+      ]) &&
+      data.orderCode is string && data.orderCode.size() >= 1 && data.orderCode.size() <= 60 &&
+      data.productCode is string && data.productCode.size() >= 1 && data.productCode.size() <= 60 &&
+      data.batchNumber is string && data.batchNumber.size() >= 1 && data.batchNumber.size() <= 60 &&
+      data.productLine is string && data.productLine.size() >= 1 && data.productLine.size() <= 80 &&
+      data.scheduleColor is string && data.scheduleColor in ['VERDE', 'VERMELHO', 'AMARELO', 'ROSA', 'BRANCO', 'AZUL'] &&
+      data.productDescription is string && data.productDescription.size() >= 1 && data.productDescription.size() <= 160 &&
+      data.finishColor is string && data.finishColor.size() >= 1 && data.finishColor.size() <= 80 &&
+      isValidNumber(data.qtyV01, 0, 1000000) &&
+      isValidNumber(data.qtyV02, 0, 1000000) &&
+      isValidNumber(data.qtyV03, 0, 1000000) &&
+      isValidNumber(data.totalVolumes, 0, 3000000) &&
+      data.dateCorte is string && data.dateCorte.size() <= 30 &&
+      data.dateColadeira is string && data.dateColadeira.size() <= 30 &&
+      data.dateFuradeira is string && data.dateFuradeira.size() <= 30 &&
+      data.datePintura is string && data.datePintura.size() <= 30 &&
+      (!('isHighlighted' in data) || data.isHighlighted is bool) &&
+      (!('isEncab' in data) || data.isEncab is bool) &&
+      isValidId(data.ownerId) &&
+      data.createdAt is timestamp;
+    }
+
+    match /production_orders/{orderId} {
+      allow get: if isSignedIn() && isValidId(orderId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+        isValidId(orderId) &&
+        isValidProductionOrder(incoming()) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time;
+
+      allow update: if isSignedIn() &&
+        isValidId(orderId) &&
+        isValidProductionOrder(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        (existing().ownerId == request.auth.uid || isAdmin());
+
+      allow delete: if isSignedIn() && isValidId(orderId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+  }
+}

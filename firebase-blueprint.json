@@ -1,0 +1,660 @@
+{
+  "entities": {
+    "Machine": {
+      "title": "Machine",
+      "description": "Industrial machine station assigned to one of the 4 production lines (Corte, Coladeiras, Furadeiras, Pintura UV).",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Machine name (e.g., Seccionadora Giben, Maclinea Dupla)",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "sector": {
+          "type": "string",
+          "description": "Production line sector",
+          "enum": ["SECCIONADORA", "COLADEIRA", "FURADEIRA", "LINHA_UV"]
+        },
+        "username": {
+          "type": "string",
+          "description": "Machine login username",
+          "minLength": 2,
+          "maxLength": 50,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "accessPin": {
+          "type": "string",
+          "description": "Machine password/PIN",
+          "minLength": 3,
+          "maxLength": 50
+        },
+        "status": {
+          "type": "string",
+          "description": "Current operational status",
+          "enum": ["OPERANDO", "SETUP", "MANUTENCAO", "PARADA"]
+        },
+        "currentProduct": {
+          "type": "string",
+          "description": "Current furniture module in processing",
+          "maxLength": 120
+        },
+        "currentPaCode": {
+          "type": "string",
+          "description": "Current Module/PA Code",
+          "maxLength": 60
+        },
+        "currentPart": {
+          "type": "string",
+          "description": "Current part in processing",
+          "maxLength": 120
+        },
+        "currentPartCode": {
+          "type": "string",
+          "description": "Current part code",
+          "maxLength": 60
+        },
+        "currentBatch": {
+          "type": "string",
+          "description": "Current batch number",
+          "maxLength": 60
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the factory owner",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "name",
+        "sector",
+        "username",
+        "accessPin",
+        "status",
+        "currentProduct",
+        "currentPart",
+        "currentPartCode",
+        "currentBatch",
+        "ownerId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CatalogPart": {
+      "title": "CatalogPart",
+      "description": "Part belonging to one of the ~180 furniture modules (PA), storing unit square meters (m²) and unit linear edge meters (m lineares).",
+      "type": "object",
+      "properties": {
+        "productName": {
+          "type": "string",
+          "description": "Module / Finished Product Name",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "paCode": {
+          "type": "string",
+          "description": "Module / PA Code",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "partName": {
+          "type": "string",
+          "description": "Component part name",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "partCode": {
+          "type": "string",
+          "description": "Engineering part code",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "piecesPerProduct": {
+          "type": "number",
+          "description": "Quantity of this part per single product unit (e.g., 1, 2, 4)"
+        },
+        "dimensions": {
+          "type": "string",
+          "description": "Dimensions in mm (Comp x Larg x Esp)",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "squareMeters": {
+          "type": "number",
+          "description": "Unit area in m² for Corte (1 face)"
+        },
+        "uvSquareMeters": {
+          "type": "number",
+          "description": "Unit painted area in m² for Linha de UV (can be 1 face, 2 faces, or 0)"
+        },
+        "uvFaces": {
+          "type": "number",
+          "description": "Number of faces painted on the UV line (1, 2, or 0)"
+        },
+        "linearMeters": {
+          "type": "number",
+          "description": "Unit edge-banding length in linear meters (used by Coladeiras)"
+        },
+        "edgeConfig": {
+          "type": "string",
+          "description": "Edge banding configuration (e.g., 1C, 2C, 1C+2L, 4L)",
+          "maxLength": 40
+        },
+        "rawMaterial": {
+          "type": "string",
+          "description": "Raw material classification (e.g. Fundo 2,5mm, MDF 15mm)",
+          "maxLength": 80
+        },
+        "isFundo": {
+          "type": "boolean",
+          "description": "Flag indicating if the piece is a thin backing panel (Fundo/Costas - 2.5mm)"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "productName",
+        "paCode",
+        "partName",
+        "partCode",
+        "dimensions",
+        "squareMeters",
+        "ownerId",
+        "createdAt"
+      ]
+    },
+    "FactorySettings": {
+      "title": "FactorySettings",
+      "description": "Daily and monthly sector targets according to each sector's distinct measurement unit (Corte: m², Coladeiras: m lineares, Furadeiras: peças, Pintura UV: m²) plus piece targets.",
+      "type": "object",
+      "properties": {
+        "targetCorteM2": {
+          "type": "number",
+          "description": "Daily target for Corte in m² cortados"
+        },
+        "targetCorteMonthlyM2": {
+          "type": "number",
+          "description": "Monthly target for Corte in m² cortados"
+        },
+        "targetCortePcs": {
+          "type": "number",
+          "description": "Daily target for Corte in pieces"
+        },
+        "targetCorteMdfM2": {
+          "type": "number",
+          "description": "Daily target for Corte de MDF in m² cortados"
+        },
+        "targetCorteMdfMonthlyM2": {
+          "type": "number",
+          "description": "Monthly target for Corte de MDF in m² cortados"
+        },
+        "targetCorteMdfPcs": {
+          "type": "number",
+          "description": "Daily target for Corte de MDF in pieces"
+        },
+        "targetCorteFundoM2": {
+          "type": "number",
+          "description": "Daily target for Corte de Fundo in m² cortados"
+        },
+        "targetCorteFundoMonthlyM2": {
+          "type": "number",
+          "description": "Monthly target for Corte de Fundo in m² cortados"
+        },
+        "targetCorteFundoPcs": {
+          "type": "number",
+          "description": "Daily target for Corte de Fundo in pieces"
+        },
+        "targetColadeiraMl": {
+          "type": "number",
+          "description": "Daily target for Coladeiras in linear meters (m lineares colados)"
+        },
+        "targetColadeiraMonthlyMl": {
+          "type": "number",
+          "description": "Monthly target for Coladeiras in linear meters (m lineares colados)"
+        },
+        "targetColadeiraPcs": {
+          "type": "number",
+          "description": "Daily target for Coladeiras in pieces"
+        },
+        "targetFuradeiraPcs": {
+          "type": "number",
+          "description": "Daily target for Furadeiras in drilled pieces (peças furadas)"
+        },
+        "targetFuradeiraMonthlyPcs": {
+          "type": "number",
+          "description": "Monthly target for Furadeiras in drilled pieces (peças furadas)"
+        },
+        "targetPinturaUvM2": {
+          "type": "number",
+          "description": "Daily target for Linha de UV in m² pintados"
+        },
+        "targetPinturaUvMonthlyM2": {
+          "type": "number",
+          "description": "Monthly target for Linha de UV in m² pintados"
+        },
+        "targetPinturaUvPcs": {
+          "type": "number",
+          "description": "Daily target for Linha de UV in pieces"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "targetCorteM2",
+        "targetCortePcs",
+        "targetColadeiraMl",
+        "targetColadeiraPcs",
+        "targetFuradeiraPcs",
+        "targetPinturaUvM2",
+        "targetPinturaUvPcs",
+        "ownerId",
+        "updatedAt"
+      ]
+    },
+    "ProductionLog": {
+      "title": "ProductionLog",
+      "description": "Production output log storing pieces and the exact sector measurement (m², linear meters, or pieces).",
+      "type": "object",
+      "properties": {
+        "machineId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "machineName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "machineUsername": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 50
+        },
+        "sector": {
+          "type": "string",
+          "enum": ["SECCIONADORA", "COLADEIRA", "FURADEIRA", "LINHA_UV"]
+        },
+        "productName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "paCode": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "partName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "partCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "batchNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "quantityGood": {
+          "type": "number"
+        },
+        "quantityScrap": {
+          "type": "number"
+        },
+        "measuredAmount": {
+          "type": "number",
+          "description": "Processed amount in the sector's primary metric (m² for Corte/UV, m linear for Coladeira, pieces for Furadeira)"
+        },
+        "operatorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "shift": {
+          "type": "string",
+          "enum": ["TURNO_1", "TURNO_2", "TURNO_3"]
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 250
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "machineId",
+        "machineName",
+        "machineUsername",
+        "sector",
+        "productName",
+        "partName",
+        "partCode",
+        "batchNumber",
+        "quantityGood",
+        "quantityScrap",
+        "operatorName",
+        "shift",
+        "notes",
+        "ownerId",
+        "createdAt"
+      ]
+    },
+    "InefficiencyReason": {
+      "title": "InefficiencyReason",
+      "description": "Catalog of line stoppage / inefficiency reason codes (e.g., P1 to P22).",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Specific inefficiency code (e.g., P1, P2)",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "name": {
+          "type": "string",
+          "description": "Description of the inefficiency / stoppage reason",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of inefficiency",
+          "enum": ["SETUP", "MANUTENCAO", "MATERIAL", "OPERACIONAL", "QUALIDADE"]
+        },
+        "sector": {
+          "type": "string",
+          "description": "Target production line or ALL",
+          "enum": ["ALL", "SECCIONADORA", "COLADEIRA", "FURADEIRA", "LINHA_UV"]
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "category",
+        "sector",
+        "ownerId",
+        "createdAt"
+      ]
+    },
+    "DowntimeLog": {
+      "title": "DowntimeLog",
+      "description": "Record of a production line stoppage caused by a coded inefficiency.",
+      "type": "object",
+      "properties": {
+        "machineId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "machineName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "machineUsername": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 50
+        },
+        "sector": {
+          "type": "string",
+          "enum": ["SECCIONADORA", "COLADEIRA", "FURADEIRA", "LINHA_UV"]
+        },
+        "reasonCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "reasonName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "enum": ["SETUP", "MANUTENCAO", "MATERIAL", "OPERACIONAL", "QUALIDADE"]
+        },
+        "durationMinutes": {
+          "type": "number",
+          "description": "Duration of the line stoppage in minutes"
+        },
+        "operatorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "shift": {
+          "type": "string",
+          "enum": ["TURNO_1", "TURNO_2", "TURNO_3"]
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 250
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "machineId",
+        "machineName",
+        "machineUsername",
+        "sector",
+        "reasonCode",
+        "reasonName",
+        "category",
+        "durationMinutes",
+        "operatorName",
+        "shift",
+        "notes",
+        "ownerId",
+        "createdAt"
+      ]
+    },
+    "ProductionOrder": {
+      "title": "ProductionOrder",
+      "description": "Master Production Schedule (Plano Mestre de Produção - PMP) item grouped by Order (Encomenda) and Batch (Lote).",
+      "type": "object",
+      "properties": {
+        "orderCode": {
+          "type": "string",
+          "description": "Encomenda / Order Group code (e.g. M26051, M26052, I26036)",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "productCode": {
+          "type": "string",
+          "description": "CÓDIGO do produto (e.g. 500686, 500695)",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "batchNumber": {
+          "type": "string",
+          "description": "LOTE (e.g. M2605101, I2603605)",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "productLine": {
+          "type": "string",
+          "description": "LINHA (e.g. MARQUESA, RAINHA, KIT REALEZA)",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "scheduleColor": {
+          "type": "string",
+          "enum": ["VERDE", "VERMELHO", "AMARELO", "ROSA", "BRANCO", "AZUL"]
+        },
+        "productDescription": {
+          "type": "string",
+          "description": "DESCRIÇÃO DO PRODUTO",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "finishColor": {
+          "type": "string",
+          "description": "COR do produto (e.g. NATURE-VERDE, CARVALHO)",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "qtyV01": {
+          "type": "number"
+        },
+        "qtyV02": {
+          "type": "number"
+        },
+        "qtyV03": {
+          "type": "number"
+        },
+        "totalVolumes": {
+          "type": "number"
+        },
+        "dateCorte": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "dateColadeira": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "dateFuradeira": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "datePintura": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "isHighlighted": {
+          "type": "boolean"
+        },
+        "isEncab": {
+          "type": "boolean"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "orderCode",
+        "productCode",
+        "batchNumber",
+        "productLine",
+        "scheduleColor",
+        "productDescription",
+        "finishColor",
+        "qtyV01",
+        "qtyV02",
+        "qtyV03",
+        "totalVolumes",
+        "dateCorte",
+        "dateColadeira",
+        "dateFuradeira",
+        "datePintura",
+        "ownerId",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/machines/{machineId}": {
+      "schema": { "$ref": "#/entities/Machine" },
+      "description": "10+ machines across Corte, Coladeiras, Furadeiras, and Pintura UV."
+    },
+    "/catalog_parts/{partId}": {
+      "schema": { "$ref": "#/entities/CatalogPart" },
+      "description": "Product modules (~180 PAs) and their component parts with unit m² and linear meters."
+    },
+    "/factory_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/FactorySettings" },
+      "description": "Sector daily and monthly targets in m², linear meters, and pieces."
+    },
+    "/production_logs/{logId}": {
+      "schema": { "$ref": "#/entities/ProductionLog" },
+      "description": "Production logs recorded by machines."
+    },
+    "/inefficiency_reasons/{reasonId}": {
+      "schema": { "$ref": "#/entities/InefficiencyReason" },
+      "description": "Catalog of coded inefficiency reasons for line stoppages."
+    },
+    "/downtime_logs/{downtimeId}": {
+      "schema": { "$ref": "#/entities/DowntimeLog" },
+      "description": "Line stoppage events recorded by operators with specific inefficiency codes and duration in minutes."
+    },
+    "/production_orders/{orderId}": {
+      "schema": { "$ref": "#/entities/ProductionOrder" },
+      "description": "Master Production Schedule (PMP) items separated by Encomenda and Lote."
+    }
+  }
+}

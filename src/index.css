@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'IBM Plex Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 5mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* When the ticket generator modal is open (#ticket-print-root rendered in body portal),
+     completely hide #root (the background PMP/Dashboard application) so ONLY the tickets print */
+  body:has(#ticket-print-root) > #root {
+    display: none !important;
+  }
+
+  #ticket-print-root {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+
+  .ticket-print-page {
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 0 2mm !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+  }
+
+  .ticket-print-page-bottom {
+    padding-top: 42mm !important;
+  }
+
+  .ticket-print-page-top {
+    padding-top: 2mm !important;
+  }
+
+  .ticket-print-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
+  .ticket-card-print {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Controle de Fundos — Folha Completa A4 (Retrato) */
+  .fundo-a4-portrait-page {
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    width: 100% !important;
+    min-height: 272mm !important;
+    box-sizing: border-box !important;
+    padding: 8mm 10mm !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .fundo-a4-portrait-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+}
+
+
